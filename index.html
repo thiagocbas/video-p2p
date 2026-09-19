@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 Watch Party P2P - Sem Servidor</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            padding-top: 20px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        header p {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            margin-top: 10px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .left-section {
+            flex: 1;
+        }
+
+        .right-section {
+            width: 300px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"],
+        input[type="file"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus,
+        input[type="file"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f9f9f9;
+        }
+
+        .upload-area:hover {
+            background: #f0f0f0;
+            border-color: #764ba2;
+        }
+
+        .upload-area.dragging {
+            background: #e8e8ff;
+            border-color: #764ba2;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .file-info {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .button-group button {
+            flex: 1;
+        }
+
+        .video-player {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .room-code-display {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid #667eea;
+            margin-bottom: 20px;
+        }
+
+        .room-code-display .label {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .room-code {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 3px;
+            margin-bottom: 15px;
+        }
+
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .copy-btn:hover {
+            background: #5568d3;
+        }
+
+        .info-message {
+            background: #e3f2fd;
+            color: #1565c0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #1565c0;
+        }
+
+        .success-message {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2e7d32;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c62828;
+        }
+
+        .viewers-list {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .viewers-list h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .viewer-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.8em;
+        }
+
+        .viewer-name {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .badge-small {
+            background: #ffc107;
+            color: #333;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7em;
+            font-weight: 600;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-online {
+            background: #4caf50;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-connecting {
+            background: #ff9800;
+            animation: pulse 0.7s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .progress-transfer {
+            background: #f0f0f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .menu-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+
+        .menu-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .menu-card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .menu-card p {
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .menu-card button {
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .main-content {
+                flex-direction: column;
+            }
+
+            .right-section {
+                width: 100%;
+            }
+
+            .menu-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .menu-card {
+                width: 100%;
+            }
+
+            .room-code {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        function WatchPartyP2P() {
+            const [view, setView] = useState('menu');
+            const [userName, setUserName] = useState('');
+            const [roomCode, setRoomCode] = useState('');
+            const [joinCode, setJoinCode] = useState('');
+            const [videoFile, setVideoFile] = useState(null);
+            const [videoBlob, setVideoBlob] = useState(null);
+            const [videoURL, setVideoURL] = useState('');
+            const [room, setRoom] = useState(null);
+            const [viewers, setViewers] = useState([]);
+            const [isCreator, setIsCreator] = useState(false);
+            const [error, setError] = useState('');
+            const [success, setSuccess] = useState('');
+            const [connectionStatus, setConnectionStatus] = useState('disconnected');
+            const [transferProgress, setTransferProgress] = useState(0);
+
+            const videoRef = useRef(null);
+            const socketRef = useRef(null);
+            const peerConnectionRef = useRef(null);
+            const dataChannelRef = useRef(null);
+            const fileTransferRef = useRef({
+                chunks: [],
+                receivedSize: 0,
+                totalSize: 0
+            });
+
+            useEffect(() => {
+                socketRef.current = io(window.location.origin);
+
+                socketRef.current.on('room-created', (data) => {
+                    setRoomCode(data.roomCode);
+                    setRoom(data.room);
+                    setIsCreator(true);
+                    setView('watching');
+                    setSuccess('Sala criada! Compartilhe o código com seus amigos.');
+                    setConnectionStatus('connected');
+                });
+
+                socketRef.current.on('user-joined', (data) => {
+                    if (data.userId !== socketRef.current.id) {
+                        setViewers(prev => [...new Set([...prev, data.userName])]);
+                    }
+                });
+
+                socketRef.current.on('user-left', (data) => {
+                    setViewers(prev => prev.slice(0, data.viewerCount - 1));
+                });
+
+                socketRef.current.on('room-closed', (data) => {
+                    setError('Sala foi encerrada pelo criador.');
+                    setVideoURL('');
+                    setRoom(null);
+                    setView('menu');
+                });
+
+                socketRef.current.on('error', (data) => {
+                    setError(data.message);
+                });
+
+                // WebRTC Signaling
+                socketRef.current.on('receive-offer', async (data) => {
+                    await handleReceiveOffer(data.offer, data.fromUserId);
+                });
+
+                socketRef.current.on('receive-answer', async (data) => {
+                    await handleReceiveAnswer(data.answer);
+                });
+
+                socketRef.current.on('receive-ice-candidate', async (data) => {
+                    if (data.candidate && peerConnectionRef.current) {
+                        try {
+                            await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+                        } catch (e) {
+                            console.error('Erro ao adicionar ICE candidate:', e);
+                        }
+                    }
+                });
+
+                socketRef.current.on('video-sync', (data) => {
+                    if (videoRef.current && data.fromUserId !== socketRef.current.id) {
+                        videoRef.current.currentTime = data.currentTime;
+                        if (data.isPlaying && videoRef.current.paused) {
+                            videoRef.current.play().catch(() => {});
+                        } else if (!data.isPlaying && !videoRef.current.paused) {
+                            videoRef.current.pause();
+                        }
+                    }
+                });
+
+                socketRef.current.on('video-action', (data) => {
+                    if (videoRef.current && data.fromUserId !== socketRef.current.id) {
+                        videoRef.current.currentTime = data.currentTime;
+                        if (data.action === 'play') {
+                            videoRef.current.play().catch(() => {});
+                        } else if (data.action === 'pause') {
+                            videoRef.current.pause();
+                        }
+                    }
+                });
+
+                return () => {
+                    if (peerConnectionRef.current) {
+                        peerConnectionRef.current.close();
+                    }
+                    socketRef.current.disconnect();
+                };
+            }, []);
+
+            const handleFileUpload = (file) => {
+                if (!file.type.startsWith('video/')) {
+                    setError('Selecione um arquivo de vídeo válido');
+                    return;
+                }
+
+                if (file.size > 500 * 1024 * 1024) {
+                    setError('Arquivo muito grande (máx 500MB)');
+                    return;
+                }
+
+                setVideoFile(file);
+                setVideoBlob(file);
+
+                const url = URL.createObjectURL(file);
+                setVideoURL(url);
+                setError('');
+                setSuccess(`Vídeo carregado: ${file.name}`);
+            };
+
+            const handleCreateRoom = () => {
+                if (!userName.trim()) {
+                    setError('Preencha seu nome');
+                    return;
+                }
+
+                if (!videoBlob) {
+                    setError('Selecione um vídeo para compartilhar');
+                    return;
+                }
+
+                setError('');
+                socketRef.current.emit('create-room', {
+                    creatorName: userName,
+                    videoName: videoFile.name
+                });
+            };
+
+            const handleJoinRoom = () => {
+                if (!userName.trim() || !joinCode.trim()) {
+                    setError('Preencha seu nome e o código da sala');
+                    return;
+                }
+
+                setError('');
+                setConnectionStatus('connecting');
+                socketRef.current.emit('join-room', {
+                    roomCode: joinCode,
+                    userName
+                });
+
+                setTimeout(() => {
+                    setView('watching');
+                    // Iniciar WebRTC connection
+                    setupWebRTC(joinCode);
+                }, 500);
+            };
+
+            const setupWebRTC = async (code) => {
+                try {
+                    const config = {
+                        iceServers: [
+                            { urls: ['stun:stun.l.google.com:19302'] },
+                            { urls: ['stun:stun1.l.google.com:19302'] },
+                            { urls: ['stun:stun2.l.google.com:19302'] }
+                        ]
+                    };
+
+                    peerConnectionRef.current = new RTCPeerConnection(config);
+
+                    peerConnectionRef.current.onicecandidate = (event) => {
+                        if (event.candidate) {
+                            socketRef.current.emit('webrtc-ice-candidate', {
+                                roomCode: code,
+                                candidate: event.candidate
+                            });
+                        }
+                    };
+
+                    peerConnectionRef.current.ondatachannel = (event) => {
+                        setupDataChannel(event.channel);
+                    };
+
+                    if (isCreator) {
+                        // Criador cria data channel
+                        const dc = peerConnectionRef.current.createDataChannel('video', {
+                            ordered: true,
+                            maxPacketLifeTime: 30000
+                        });
+                        setupDataChannel(dc);
+
+                        // Enviar offer
+                        const offer = await peerConnectionRef.current.createOffer();
+                        await peerConnectionRef.current.setLocalDescription(offer);
+                        socketRef.current.emit('webrtc-offer', {
+                            roomCode: code,
+                            targetUserId: viewers[0], // Enviar para primeiro viewer
+                            offer: offer
+                        });
+                    }
+
+                    setConnectionStatus('connected');
+                } catch (err) {
+                    console.error('Erro ao setupar WebRTC:', err);
+                    setError('Erro ao conectar P2P: ' + err.message);
+                }
+            };
+
+            const handleReceiveOffer = async (offer, fromUserId) => {
+                try {
+                    if (!peerConnectionRef.current) {
+                        peerConnectionRef.current = new RTCPeerConnection({
+                            iceServers: [
+                                { urls: ['stun:stun.l.google.com:19302'] },
+                                { urls: ['stun:stun1.l.google.com:19302'] }
+                            ]
+                        });
+
+                        peerConnectionRef.current.onicecandidate = (event) => {
+                            if (event.candidate) {
+                                socketRef.current.emit('webrtc-ice-candidate', {
+                                    roomCode: roomCode || joinCode,
+                                    candidate: event.candidate
+                                });
+                            }
+                        };
+
+                        peerConnectionRef.current.ondatachannel = (event) => {
+                            setupDataChannel(event.channel);
+                        };
+                    }
+
+                    await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+                    const answer = await peerConnectionRef.current.createAnswer();
+                    await peerConnectionRef.current.setLocalDescription(answer);
+
+                    socketRef.current.emit('webrtc-answer', {
+                        targetUserId: fromUserId,
+                        answer: answer
+                    });
+                } catch (err) {
+                    console.error('Erro ao receber offer:', err);
+                }
+            };
+
+            const handleReceiveAnswer = async (answer) => {
+                try {
+                    await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+                    setConnectionStatus('connected');
+                } catch (err) {
+                    console.error('Erro ao receber answer:', err);
+                }
+            };
+
+            const setupDataChannel = (dataChannel) => {
+                dataChannelRef.current = dataChannel;
+
+                dataChannel.onopen = () => {
+                    console.log('Data channel aberto');
+                    setConnectionStatus('connected');
+
+                    if (isCreator && videoBlob) {
+                        sendVideoFile(dataChannel);
+                    }
+                };
+
+                dataChannel.onmessage = (event) => {
+                    if (typeof event.data === 'object') {
+                        fileTransferRef.current.chunks.push(event.data);
+                        fileTransferRef.current.receivedSize += event.data.size;
+
+                        const progress = (fileTransferRef.current.receivedSize / fileTransferRef.current.totalSize) * 100;
+                        setTransferProgress(progress);
+
+                        if (fileTransferRef.current.receivedSize === fileTransferRef.current.totalSize) {
+                            const receivedBlob = new Blob(fileTransferRef.current.chunks);
+                            const url = URL.createObjectURL(receivedBlob);
+                            setVideoURL(url);
+                            setSuccess('Vídeo recebido com sucesso!');
+                        }
+                    }
+                };
+
+                dataChannel.onerror = (error) => {
+                    console.error('Erro no data channel:', error);
+                    setError('Erro de conexão P2P');
+                };
+
+                dataChannel.onclose = () => {
+                    console.log('Data channel fechado');
+                };
+            };
+
+            const sendVideoFile = async (dataChannel) => {
+                if (!videoBlob) return;
+
+                const chunkSize = 16384; // 16KB chunks
+                const totalChunks = Math.ceil(videoBlob.size / chunkSize);
+
+                // Enviar metadata
+                dataChannel.send(JSON.stringify({
+                    type: 'metadata',
+                    size: videoBlob.size,
+                    name: videoFile.name
+                }));
+
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * chunkSize;
+                    const end = Math.min(start + chunkSize, videoBlob.size);
+                    const chunk = videoBlob.slice(start, end);
+
+                    if (dataChannel.readyState === 'open') {
+                        dataChannel.send(chunk);
+                        setTransferProgress((i / totalChunks) * 100);
+                    }
+                }
+
+                setTransferProgress(100);
+            };
+
+            const copyCode = () => {
+                const code = roomCode || joinCode;
+                navigator.clipboard.writeText(code);
+                setSuccess('Código copiado!');
+                setTimeout(() => setSuccess(''), 3000);
+            };
+
+            const handlePlay = () => {
+                if (isCreator && videoRef.current) {
+                    socketRef.current.emit('video-action', {
+                        roomCode,
+                        action: 'play',
+                        currentTime: videoRef.current.currentTime
+                    });
+                }
+            };
+
+            const handlePause = () => {
+                if (isCreator && videoRef.current) {
+                    socketRef.current.emit('video-action', {
+                        roomCode,
+                        action: 'pause',
+                        currentTime: videoRef.current.currentTime
+                    });
+                }
+            };
+
+            const handleTimeUpdate = () => {
+                if (isCreator && videoRef.current) {
+                    socketRef.current.emit('video-sync', {
+                        roomCode,
+                        currentTime: videoRef.current.currentTime,
+                        isPlaying: !videoRef.current.paused
+                    });
+                }
+            };
+
+            const leaveRoom = () => {
+                setVideoURL('');
+                setRoom(null);
+                setRoomCode('');
+                setJoinCode('');
+                setViewers([]);
+                setTransferProgress(0);
+                setView('menu');
+
+                if (peerConnectionRef.current) {
+                    peerConnectionRef.current.close();
+                    peerConnectionRef.current = null;
+                }
+            };
+
+            // ===== RENDER MENU =====
+            if (view === 'menu') {
+                return (
+                    <div className="container">
+                        <header>
+                            <h1>🎬 Watch Party P2P</h1>
+                            <p>Assista com amigos. Sem servidor. Sem login. Sem download.</p>
+                            <div className="badge">✨ Totalmente descentralizado com WebRTC</div>
+                        </header>
+
+                        {error && <div className="error-message">{error}</div>}
+                        {success && <div className="success-message">{success}</div>}
+
+                        <div className="menu-buttons">
+                            <div className="menu-card">
+                                <h2>📺 Criar Sala</h2>
+                                <p>Compartilhe seu vídeo com amigos</p>
+
+                                <div className="form-group">
+                                    <label>Seu nome</label>
+                                    <input
+                                        type="text"
+                                        value={userName}
+                                        onChange={(e) => setUserName(e.target.value)}
+                                        placeholder="Seu nome"
+                                        onKeyPress={(e) => e.key === 'Enter' && setView('create')}
+                                    />
+                                </div>
+
+                                <button onClick={() => setView('create')}>Próximo</button>
+                            </div>
+
+                            <div className="menu-card">
+                                <h2>🔗 Entrar em Sala</h2>
+                                <p>Assista com um amigo</p>
+
+                                <div className="form-group">
+                                    <label>Seu nome</label>
+                                    <input
+                                        type="text"
+                                        value={userName}
+                                        onChange={(e) => setUserName(e.target.value)}
+                                        placeholder="Seu nome"
+                                    />
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Código da Sala</label>
+                                    <input
+                                        type="text"
+                                        value={joinCode}
+                                        onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                                        placeholder="Ex: ABC12345"
+                                        onKeyPress={(e) => e.key === 'Enter' && handleJoinRoom()}
+                                    />
+                                </div>
+
+                                <button onClick={handleJoinRoom}>Entrar</button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // ===== RENDER CREATE =====
+            if (view === 'create') {
+                return (
+                    <div className="container">
+                        <header>
+                            <h1>📤 Compartilhar Vídeo</h1>
+                        </header>
+
+                        {error && <div className="error-message">{error}</div>}
+                        {success && <div className="success-message">{success}</div>}
+
+                        <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+                            <div className="form-group">
+                                <label>Seu nome</label>
+                                <input
+                                    type="text"
+                                    value={userName}
+                                    onChange={(e) => setUserName(e.target.value)}
+                                    placeholder="Seu nome"
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Selecione seu vídeo</label>
+                                <div
+                                    className="upload-area"
+                                    onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.classList.add('dragging');
+                                    }}
+                                    onDragLeave={(e) => {
+                                        e.currentTarget.classList.remove('dragging');
+                                    }}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.classList.remove('dragging');
+                                        if (e.dataTransfer.files[0]) {
+                                            handleFileUpload(e.dataTransfer.files[0]);
+                                        }
+                                    }}
+                                >
+                                    <input
+                                        type="file"
+                                        accept="video/*"
+                                        onChange={(e) => e.target.files && handleFileUpload(e.target.files[0])}
+                                        style={{ display: 'none' }}
+                                        id="fileInput"
+                                    />
+                                    <label htmlFor="fileInput" style={{ cursor: 'pointer' }}>
+                                        <div className="upload-icon">🎥</div>
+                                        <div>Clique ou arraste um vídeo aqui</div>
+                                        <div className="file-info">
+                                            Formatos: MP4, WebM, MOV, AVI (máx 500MB)
+                                        </div>
+                                    </label>
+                                </div>
+
+                                {videoFile && (
+                                    <div className="file-info" style={{ marginTop: '15px', color: '#2e7d32' }}>
+                                        ✓ {videoFile.name} ({(videoFile.size / 1024 / 1024).toFixed(2)}MB)
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="button-group">
+                                <button onClick={() => setView('menu')}>Voltar</button>
+                                <button onClick={handleCreateRoom} disabled={!videoBlob}>
+                                    Criar Sala
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // ===== RENDER WATCHING =====
+            if (view === 'watching') {
+                return (
+                    <div className="container">
+                        <header>
+                            <h1>🎬 Assistindo Junto</h1>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '10px', color: 'white' }}>
+                                <span className={`status-indicator ${connectionStatus === 'connected' ? 'status-online' : 'status-connecting'}`}></span>
+                                <span>{connectionStatus === 'connected' ? 'Conectado' : 'Conectando...'}</span>
+                            </div>
+                        </header>
+
+                        {error && <div className="error-message">{error}</div>}
+                        {success && <div className="success-message">{success}</div>}
+
+                        <div className="main-content">
+                            <div className="left-section">
+                                {isCreator && !videoURL && (
+                                    <div className="info-message">
+                                        ℹ️ Aguardando participantes para enviar vídeo...
+                                    </div>
+                                )}
+
+                                {transferProgress > 0 && transferProgress < 100 && (
+                                    <div className="progress-transfer">
+                                        <div style={{ marginBottom: '10px' }}>
+                                            <strong>Transferindo vídeo...</strong>
+                                        </div>
+                                        <div className="progress-bar">
+                                            <div className="progress-fill" style={{ width: `${transferProgress}%` }}></div>
+                                        </div>
+                                        <div style={{ fontSize: '0.9em', color: '#666' }}>
+                                            {Math.round(transferProgress)}%
+                                        </div>
+                                    </div>
+                                )}
+
+                                {videoURL && (
+                                    <div className="video-player">
+                                        <video
+                                            ref={videoRef}
+                                            src={videoURL}
+                                            controls={isCreator}
+                                            onPlay={handlePlay}
+                                            onPause={handlePause}
+                                            onTimeUpdate={handleTimeUpdate}
+                                        />
+                                    </div>
+                                )}
+
+                                {!videoURL && (
+                                    <div style={{
+                                        background: '#000',
+                                        borderRadius: '12px',
+                                        padding: '80px 20px',
+                                        textAlign: 'center',
+                                        color: '#fff',
+                                        marginBottom: '20px'
+                                    }}>
+                                        <div className="spinner" style={{ borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white' }}></div>
+                                        <p>Aguardando vídeo...</p>
+                                    </div>
+                                )}
+
+                                {isCreator && (
+                                    <div className="room-code-display">
+                                        <div className="label">📎 Compartilhe este código:</div>
+                                        <div className="room-code">{roomCode}</div>
+                                        <button className="copy-btn" onClick={copyCode}>
+                                            📋 Copiar Código
+                                        </button>
+                                    </div>
+                                )}
+
+                                {!isCreator && (
+                                    <div className="info-message">
+                                        ℹ️ Apenas o criador pode controlar o vídeo. Você assiste sincronizado!
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="right-section">
+                                <div className="viewers-list">
+                                    <h3>👥 Espectadores</h3>
+
+                                    {isCreator ? (
+                                        <>
+                                            <div className="viewer-item">
+                                                <div className="avatar">{userName.charAt(0).toUpperCase()}</div>
+                                                <div className="viewer-name">{userName}</div>
+                                                <div className="badge-small">CRIADOR</div>
+                                            </div>
+                                            {viewers.map((v, i) => (
+                                                <div key={i} className="viewer-item">
+                                                    <div className="avatar">{v.charAt(0).toUpperCase()}</div>
+                                                    <div className="viewer-name">{v}</div>
+                                                </div>
+                                            ))}
+                                            {viewers.length === 0 && (
+                                                <div style={{ color: '#999', textAlign: 'center', padding: '20px' }}>
+                                                    Aguardando pessoas...
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="viewer-item">
+                                                <div className="avatar">?</div>
+                                                <div className="viewer-name">Criador</div>
+                                                <div className="badge-small">CRIADOR</div>
+                                            </div>
+                                            <div className="viewer-item">
+                                                <div className="avatar">{userName.charAt(0).toUpperCase()}</div>
+                                                <div className="viewer-name">Você</div>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                <button onClick={leaveRoom} style={{ width: '100%' }}>
+                                    Sair da Sala
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return null;
+        }
+
+        ReactDOM.render(<WatchPartyP2P />, document.getElementById('root'));
+    </script>
+</body>
+</html>
